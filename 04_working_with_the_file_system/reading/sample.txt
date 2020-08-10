@@ -1,0 +1,7 @@
+This
+Is 
+Some
+Sample
+Text
+
+For testing reading a whole file at once
