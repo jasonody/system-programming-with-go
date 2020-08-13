@@ -18,7 +18,9 @@ func main() {
 	file, err := os.Open(os.Args[1])
 	if err != nil {
 		fmt.Println("Cannot open:", err)
+		return
 	}
+	defer file.Close()
 
 	file.Seek(9, io.SeekStart)
 	data := make([]byte, 4)
