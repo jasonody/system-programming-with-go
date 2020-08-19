@@ -1,4 +1,4 @@
-// go run copy_stream.go
+// go run copy.go
 
 package main
 
