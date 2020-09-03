@@ -1,4 +1,4 @@
-// go run input_management.go
+// go run pseudo_term.go
 
 package main
 
