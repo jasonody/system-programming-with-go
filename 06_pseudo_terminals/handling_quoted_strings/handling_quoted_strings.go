@@ -12,8 +12,9 @@ import (
 )
 
 func main() {
-	s := bufio.NewScanner(strings.NewReader(`And the 'cats in
-	the craddle' and "the silver's spoon" nasa put a man on "the moon`))
+	s := bufio.NewScanner(strings.NewReader("hi 'this day'"))
+	// s := bufio.NewScanner(strings.NewReader(`And the 'cats in
+	// the craddle' and "the silver's spoon" nasa put a man on "the moon`))
 	s.Split(ScanArgs) // set the split function for the scanner (default is ScanLines)
 
 	for s.Scan() {
@@ -48,7 +49,8 @@ func ScanArgs(data []byte, atEOF bool) (advance int, token []byte, err error) {
 	for width, i := 0, start; i < len(data); i += width {
 		var r rune
 		r, width = utf8.DecodeRune(data[i:])
-		if ok := isQuote(first); !ok && unicode.IsSpace(r) || ok && r == first {
+		fmt.Printf("first: %q r: %q | ", string(first), string(r))
+		if isFirstCharQuote := isQuote(first); !isFirstCharQuote && unicode.IsSpace(r) || isFirstCharQuote && r == first {
 			return i + width, data[start:i], nil
 		}
 	}
