@@ -4,12 +4,15 @@ package main
 
 import (
 	"bufio"
+	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"math/rand"
 	"os"
 	"path/filepath"
-	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/agnivade/levenshtein"
 )
@@ -107,6 +110,8 @@ func init() {
 func main() {
 	s := bufio.NewScanner(os.Stdin) // bufio.Scanner is a line reader
 	w := os.Stdout
+	args := argsScanner{}
+	b := bytes.Buffer{}
 
 	fmt.Fprint(w, "Welcome to PseudoTerm!\n")
 
@@ -114,16 +119,25 @@ func main() {
 		pwd, err := os.Getwd()
 		if err != nil {
 			fmt.Println("Cannot get working directory", err)
+			return
 		}
 		fmt.Fprintf(w, "\n[%s] >", filepath.Base(pwd))
 
-		if !s.Scan() {
-			continue
+		args.Reset()
+		b.Reset()
+
+		for {
+			s.Scan()
+			b.Write(s.Bytes())
+			extra := args.Parse(&b)
+			if extra == "" {
+				break
+			}
+			b.WriteString(extra)
+			fmt.Println(extra)
 		}
 
-		args := strings.Split(s.Text(), " ")
 		idx := -1
-
 		for i := range cmds {
 			if !cmds[i].Match(args[0]) {
 				continue
@@ -137,11 +151,84 @@ func main() {
 			continue
 		}
 
-		if cmds[idx].Action(w, args[1:]) { // execute command and exit it returns true
+		if cmds[idx].Run(w, args[1:]) { // execute command and exit it returns true
 			fmt.Fprintln(w)
 			return
 		}
 	}
+}
+
+var ErrClosingQuote = errors.New("Missing closing quote")
+
+func isQuote(r rune) bool {
+	return r == '"' || r == '\''
+}
+
+// this implementation does not handle quoted string that spans across chunks
+func ScanArgs(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	// first space
+	start, first := 0, rune(0)
+	for width := 0; start < len(data); start += width {
+		first, width = utf8.DecodeRune(data[start:])
+		if !unicode.IsSpace(first) {
+			break
+		}
+	}
+
+	// skip quote
+	if isQuote(first) {
+		start++
+	}
+
+	// loop until arg end character
+	for width, i := 0, start; i < len(data); i += width {
+		var r rune
+		r, width = utf8.DecodeRune(data[i:])
+		if isFirstCharQuote := isQuote(first); !isFirstCharQuote && unicode.IsSpace(r) || isFirstCharQuote && r == first {
+			return i + width, data[start:i], nil
+		}
+	}
+
+	// token from EOF
+	if atEOF && len(data) > start {
+		if isQuote(first) {
+			err = ErrClosingQuote
+		}
+		return len(data), data[start:], err
+	}
+
+	if isQuote(first) {
+		start--
+	}
+	return start, nil, nil
+}
+
+type argsScanner []string
+
+func (a *argsScanner) Reset() { *a = (*a)[0:0] }
+
+func (a *argsScanner) Parse(r io.Reader) string {
+	s := bufio.NewScanner(r)
+	s.Split(ScanArgs)
+	for s.Scan() {
+		*a = append(*a, s.Text())
+	}
+
+	if err := s.Err(); err != nil {
+		fmt.Println(err)
+	}
+
+	if len(*a) == 0 {
+		return ""
+	}
+
+	lastArg := (*a)[len(*a)-1]
+	if !isQuote(rune(lastArg[0])) {
+		return ""
+	}
+
+	*a = (*a)[:len(*a)-1]
+	return lastArg + "\n"
 }
 
 func commandNotFound(w io.Writer, cmd string) {
