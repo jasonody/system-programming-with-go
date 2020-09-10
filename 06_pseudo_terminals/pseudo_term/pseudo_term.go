@@ -17,6 +17,34 @@ import (
 	"github.com/agnivade/levenshtein"
 )
 
+type color int
+
+func (c color) Start(w io.Writer) {
+	fmt.Fprintf(w, "\x1b[%dm", c)
+}
+
+func (c color) End(w io.Writer) {
+	fmt.Fprintf(w, "\x1b[%dm", Reset)
+}
+
+func (c color) Sprintf(w io.Writer, format string, args ...interface{}) {
+	c.Start(w)
+	fmt.Fprintf(w, format, args...)
+	c.End(w)
+}
+
+// list of colors
+const (
+	Reset   color = 0
+	Red     color = 31
+	Green   color = 32
+	Yellow  color = 33
+	Blue    color = 34
+	Magenta color = 35
+	Cyan    color = 36
+	White   color = 37
+)
+
 func exit(w io.Writer, args []string) bool {
 	fmt.Fprintf(w, "Goodbye! :)\n")
 	return true
@@ -34,11 +62,18 @@ func shuffle(w io.Writer, args []string) bool {
 	rand.Shuffle(len(args), func(i, j int) {
 		args[i], args[j] = args[j], args[i]
 	})
+
 	for i := range args {
 		if i > 0 {
 			fmt.Fprint(w, " ") // add a space to seperate words
 		}
-		fmt.Fprintf(w, "%s", args[i])
+		var f func(w io.Writer, format string, args ...interface{})
+		if i%2 == 0 {
+			f = Red.Sprintf
+		} else {
+			f = Green.Sprintf
+		}
+		f(w, "%s", args[i])
 	}
 	fmt.Fprintln(w)
 	return false
@@ -121,7 +156,8 @@ func main() {
 			fmt.Println("Cannot get working directory", err)
 			return
 		}
-		fmt.Fprintf(w, "\n[%s] >", filepath.Base(pwd))
+
+		Blue.Sprintf(w, "\n[%s]> ", filepath.Base(pwd))
 
 		args.Reset()
 		b.Reset()
