@@ -14,7 +14,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/agnivade/levenshtein"
+	"github.com/jasonody/system-programming-with-go/06_pseudo_terminals/pseudo_term/command"
 )
 
 type color int
@@ -45,20 +45,7 @@ const (
 	White   color = 37
 )
 
-func exit(w io.Writer, args []string) bool {
-	fmt.Fprintf(w, "Goodbye! :)\n")
-	return true
-}
-
-func help(w io.Writer, args []string) bool {
-	fmt.Fprintln(w, "Available commands:")
-	for _, cmd := range cmds {
-		fmt.Fprintf(w, "  - %-15s %s\n", cmd.Name, cmd.Help)
-	}
-	return false
-}
-
-func shuffle(w io.Writer, args []string) bool {
+func shuffle(r io.Reader, w io.Writer, args []string) bool {
 	rand.Shuffle(len(args), func(i, j int) {
 		args[i], args[j] = args[j], args[i]
 	})
@@ -79,21 +66,21 @@ func shuffle(w io.Writer, args []string) bool {
 	return false
 }
 
-func print(w io.Writer, args []string) bool {
-	if len(args) != 1 {
+func print(r io.Reader, w io.Writer, args []string) bool {
+	if len(args) != 2 {
 		fmt.Fprintln(w, "Please specify one file.")
 		return false
 	}
 
-	f, err := os.Open(args[0])
+	f, err := os.Open(args[1])
 	if err != nil {
-		fmt.Fprintf(w, "Cannot open %s: %s\n", args[0], err)
+		fmt.Fprintf(w, "Cannot open %s: %s\n", args[1], err)
 		return false
 	}
 	defer f.Close()
 
 	if _, err := io.Copy(w, f); err != nil {
-		fmt.Fprintf(w, "Cannot print %s: %s\n", args[0], err)
+		fmt.Fprintf(w, "Cannot print %s: %s\n", args[1], err)
 		return false
 	}
 
@@ -101,45 +88,18 @@ func print(w io.Writer, args []string) bool {
 	return false
 }
 
-type cmd struct {
-	Name   string                                // the command name
-	Help   string                                // a description of the command
-	Action func(w io.Writer, args []string) bool // command handler
-}
-
-func (c cmd) Match(s string) bool {
-	return c.Name == s
-}
-
-func (c cmd) Run(w io.Writer, args []string) bool {
-	return c.Action(w, args)
-}
-
-var cmds = make([]cmd, 0, 10)
-
 // init() gets called before main()
 func init() {
-	cmds = append(cmds,
-		cmd{
-			Name:   "exit",
-			Help:   "Exits the application",
-			Action: exit,
-		},
-		cmd{
-			Name:   "help",
-			Help:   "Shows available commands",
-			Action: help,
-		},
-		cmd{
-			Name:   "shuffle",
-			Help:   "Shuffles a list of strings",
-			Action: shuffle,
-		},
-		cmd{
-			Name:   "print",
-			Help:   "Prints a file",
-			Action: print,
-		})
+	command.Register(command.Base{
+		Name:   "shuffle",
+		Help:   "Shuffles a list of strings",
+		Action: shuffle,
+	})
+	command.Register(command.Base{
+		Name:   "print",
+		Help:   "Prints a file",
+		Action: print,
+	})
 }
 
 func main() {
@@ -173,21 +133,7 @@ func main() {
 			fmt.Println(extra)
 		}
 
-		idx := -1
-		for i := range cmds {
-			if !cmds[i].Match(args[0]) {
-				continue
-			}
-			idx = i
-			break
-		}
-
-		if idx == -1 {
-			commandNotFound(w, args[0])
-			continue
-		}
-
-		if cmds[idx].Run(w, args[1:]) { // execute command and exit it returns true
+		if command.GetCommand(args[0]).Run(os.Stdin, w, args) {
 			fmt.Fprintln(w)
 			return
 		}
@@ -265,28 +211,4 @@ func (a *argsScanner) Parse(r io.Reader) string {
 
 	*a = (*a)[:len(*a)-1]
 	return lastArg + "\n"
-}
-
-func commandNotFound(w io.Writer, cmd string) {
-	var suggestions []string
-
-	for _, c := range cmds {
-		if levenshtein.ComputeDistance(c.Name, cmd) < 3 {
-			suggestions = append(suggestions, c.Name)
-		}
-	}
-
-	fmt.Fprintf(w, "Command %q not found. ", cmd)
-	if len(suggestions) == 0 {
-		fmt.Fprint(w, "Use `help` for available commands.\n")
-		return
-	}
-	fmt.Fprint(w, "Maybe you meant: ")
-	for i, suggestion := range suggestions {
-		if i > 0 {
-			fmt.Fprint(w, ", ")
-		}
-		fmt.Fprintf(w, "%s", suggestion)
-	}
-	fmt.Fprintln(w)
 }
