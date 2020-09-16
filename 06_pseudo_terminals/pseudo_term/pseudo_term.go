@@ -1,4 +1,4 @@
-// go run pseudo_term.go
+// go run pseudo_term.go stack.go
 
 package main
 
