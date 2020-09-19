@@ -37,6 +37,15 @@ func (s *Stack) pop() (string, bool) {
 	return v, true
 }
 
+func (s *Stack) peek() (string, bool) {
+	if len(s.data) == 0 {
+		return "", false
+	}
+
+	v := s.data[len(s.data)-1]
+	return v, true
+}
+
 func (s *Stack) length() int {
 	return len(s.data)
 }
@@ -51,7 +60,7 @@ func (s *Stack) GetHelp() string {
 
 func (s *Stack) isValid(cmd string, args []string) bool {
 	switch cmd {
-	case "pop", "length":
+	case "pop", "peek", "length":
 		return len(args) == 0
 	case "push":
 		return len(args) > 0
@@ -62,24 +71,39 @@ func (s *Stack) isValid(cmd string, args []string) bool {
 
 func (s *Stack) Run(r io.Reader, w io.Writer, args []string) (exit bool) {
 	if l := len(args); l < 2 || !s.isValid(args[1], args[2:]) {
-		fmt.Fprintf(w, "Use `stack push <something>` or `stack pop`\n")
+		fmt.Fprintf(w, "Use `stack push <something>`, `stack pop`, `stack peek`, or `stack length`\n")
 		return false
 	}
 
-	if args[1] == "length" {
-		fmt.Fprintf(w, "Length: %d", s.length())
-		return false
-	}
-
-	if args[1] == "push" {
-		s.push(args[2:]...)
-		return false
-	}
-
-	if v, ok := s.pop(); !ok {
-		fmt.Fprintf(w, "Stack is empty!")
-	} else {
-		fmt.Fprintf(w, "Retrieved: `%s`\n", v)
+	switch args[1] {
+	case "length":
+		{
+			fmt.Fprintf(w, "Length: %d", s.length())
+			break
+		}
+	case "push":
+		{
+			s.push(args[2:]...)
+			break
+		}
+	case "peek":
+		{
+			if v, ok := s.peek(); !ok {
+				fmt.Fprintf(w, "Stack is empty!")
+			} else {
+				fmt.Fprintf(w, "Retrieved: `%s`\n", v)
+			}
+			break
+		}
+	case "pop":
+		{
+			if v, ok := s.pop(); !ok {
+				fmt.Fprintf(w, "Stack is empty!")
+			} else {
+				fmt.Fprintf(w, "Retrieved: `%s`\n", v)
+			}
+			break
+		}
 	}
 	return false
 }
