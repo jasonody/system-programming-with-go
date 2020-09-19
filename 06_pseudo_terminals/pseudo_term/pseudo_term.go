@@ -108,6 +108,9 @@ func main() {
 	args := argsScanner{}
 	b := bytes.Buffer{}
 
+	command.Startup(w)
+	defer command.Shutdown(w) // this is executed before returning
+
 	fmt.Fprint(w, "Welcome to PseudoTerm!\n")
 
 	for {

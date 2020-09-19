@@ -11,6 +11,8 @@ import (
 
 // command represents a terminal command
 type Command interface {
+	Startup(w io.Writer) error
+	Shutdown(w io.Writer) error
 	GetName() string
 	GetHelp() string
 	Run(input io.Reader, output io.Writer, args []string) (exit bool)
@@ -20,6 +22,24 @@ type Command interface {
 var ErrDuplicateCommand = errors.New("Duplicate command")
 
 var commands []Command
+
+// Startup execute startup for all commands
+func Startup(w io.Writer) {
+	for _, c := range commands {
+		if err := c.Startup(w); err != nil {
+			fmt.Fprintf(w, "%s: startup error: %s", c.GetName(), err)
+		}
+	}
+}
+
+// Shutdown executes shutdown for all commands
+func Shutdown(w io.Writer) {
+	for _, c := range commands {
+		if err := c.Shutdown(w); err != nil {
+			fmt.Fprintf(w, "%s: shutdown error: %s", c.GetName(), err)
+		}
+	}
+}
 
 // Register adds the Command to the command list
 func Register(command Command) error {
@@ -47,6 +67,12 @@ type Base struct {
 	Name, Help string
 	Action     func(input io.Reader, output io.Writer, args []string) (exit bool)
 }
+
+// Startup does nothing
+func (b Base) Startup(w io.Writer) error { return nil }
+
+// Shutdown does nothing
+func (b Base) Shutdown(w io.Writer) error { return nil }
 
 func (b Base) String() string { return b.Name }
 
