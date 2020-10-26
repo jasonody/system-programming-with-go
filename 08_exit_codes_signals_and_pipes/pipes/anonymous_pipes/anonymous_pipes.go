@@ -21,15 +21,15 @@ func main() {
 		exec.Command("wc", "-l"),
 	}
 
-	var pipes []readerWriter
+	var pipes = make([]readerWriter, len(cmds))
 
 	for i := range cmds {
 		if i == len(cmds)-1 {
-			pipes = append(pipes, readerWriter{reader: nil, writer: nil})
+			pipes[i] = readerWriter{reader: nil, writer: nil}
 			cmds[i].Stdout = os.Stdout
 		} else {
 			r, w := io.Pipe()
-			pipes = append(pipes, readerWriter{reader: r, writer: w})
+			pipes[i] = readerWriter{reader: r, writer: w}
 			cmds[i+1].Stdin, cmds[i].Stdout = pipes[i].reader, pipes[i].writer
 		}
 
