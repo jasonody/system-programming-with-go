@@ -1,0 +1,7 @@
+This is the first message
+Here is the second message
+Special message up next
+\x
+One more message
+Quitting after this message
+\q
